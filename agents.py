@@ -1,3 +1,3 @@
 class SingleMindedAgent():
-    def reply(dialog_history):
+    def reply(prompt):
         return 'Interesting...'

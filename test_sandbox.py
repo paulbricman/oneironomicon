@@ -6,7 +6,7 @@ agent = SingleMindedAgent()
 dialog_history = [
     {
         'agent_turn': True,
-        'content': 'Hello! How are you?'
+        'content': 'What if we approached this from a different perspective?'
     }
 ]
 

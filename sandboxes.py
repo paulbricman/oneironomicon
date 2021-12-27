@@ -37,9 +37,9 @@ class DiscreteSandbox():
         prompt_token_length = len(inputs[0])
         
         outputs = self.model.generate(inputs, max_length=prompt_token_length+40, no_repeat_ngram_size=3,
-            num_beams=1, prefix_allowed_tokens_fn=lambda x, y:self.force_one_paragraph(x, y, prompt_token_length), forced_eos_token_id=50256)#, bad_words_ids=self.tokenizer(['\n', '\n\n']).input_ids, logit_processor=LogitsProcessorList([PrefixConstrainedLogitsProcessor(self.force_one_paragraph, 3)]))
+            do_sample=True, prefix_allowed_tokens_fn=lambda x, y:self.force_one_paragraph(x, y, prompt_token_length), forced_eos_token_id=50256)
         reply = self.tokenizer.decode(outputs[0][prompt_token_length:])
-        reply = reply.replace('<|endoftext|>', '')
+        reply = reply.replace('<|endoftext|>', '').strip()
 
         self.dialog_history += [{'agent_turn': False, 'content': reply}]
 
@@ -50,7 +50,7 @@ class DiscreteSandbox():
 
 
     def converse(self):
-        for turn in range(self.turns):
+        for _ in range(self.turns):
             self.simulation_reply()
             self.agent_reply()
 

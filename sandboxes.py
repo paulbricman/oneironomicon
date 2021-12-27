@@ -1,17 +1,19 @@
-from transformers import pipeline
+from transformers import AutoModelForCausalLM, AutoTokenizer, LogitsProcessorList, PrefixConstrainedLogitsProcessor
 
 
 class DiscreteSandbox():
-    def __init__(self, states=1000, model='distilgpt2', turns=10, simulation_persona='student', agent_persona='instructor', dialog_history=[]):
+    def __init__(self, dialog_history=[], agent=None, states=1000, model='distilgpt2', turns=2, simulation_persona='student', agent_persona='instructor'):
+        self.dialog_history = dialog_history
+        self.agent = agent
         self.states = states
         self.turns = turns
-        self.pipeline = pipeline('text-generation', model=model)
+        self.tokenizer = AutoTokenizer.from_pretrained('distilgpt2')
+        self.model = AutoModelForCausalLM.from_pretrained('distilgpt2')
         self.simulation_persona = simulation_persona
         self.agent_persona = agent_persona
-        self.dialog_history = dialog_history
 
 
-    def render_prompt(self):
+    def render_prompt(self, append_new=True):
         prompt = ''
 
         for contribution in self.dialog_history:
@@ -19,17 +21,49 @@ class DiscreteSandbox():
                 prompt += self.agent_persona + ': ' + contribution['content'] + '\n'
             else:
                 prompt += self.simulation_persona + ': ' + contribution['content'] + '\n'
-            
-        if not self.dialog_history[-1]['agent_turn']:
-            prompt += self.agent_persona + ':'
-        else:
-            prompt += self.simulation_persona + ':'
+
+        if append_new: 
+            if not self.dialog_history[-1]['agent_turn']:
+                prompt += self.agent_persona + ':'
+            else:
+                prompt += self.simulation_persona + ':'
 
         return prompt
 
     
     def simulation_reply(self):
         prompt = self.render_prompt()
-        reply = self.pipeline(prompt)[0]['generated_text'][len(prompt):].split('\n')[0]
-        print('<' + prompt + '|' + reply + '>')
+        inputs = self.tokenizer.encode(prompt, return_tensors='pt')
+        prompt_token_length = len(inputs[0])
+        
+        outputs = self.model.generate(inputs, max_length=prompt_token_length+40, no_repeat_ngram_size=3,
+            num_beams=1, prefix_allowed_tokens_fn=lambda x, y:self.force_one_paragraph(x, y, prompt_token_length), forced_eos_token_id=50256)#, bad_words_ids=self.tokenizer(['\n', '\n\n']).input_ids, logit_processor=LogitsProcessorList([PrefixConstrainedLogitsProcessor(self.force_one_paragraph, 3)]))
+        reply = self.tokenizer.decode(outputs[0][prompt_token_length:])
+        reply = reply.replace('<|endoftext|>', '')
+
         self.dialog_history += [{'agent_turn': False, 'content': reply}]
+
+
+    def agent_reply(self):
+        reply = self.agent.reply(self.dialog_history)
+        self.dialog_history += [{'agent_turn': True, 'content': reply}]
+
+
+    def converse(self):
+        for turn in range(self.turns):
+            self.simulation_reply()
+            self.agent_reply()
+
+
+    def force_one_paragraph(self, batch_id, previous_token_ids, prompt_token_length):
+        max_sentences = 1
+        previous_token_ids = previous_token_ids.tolist()[prompt_token_length:]
+        generated_text = self.tokenizer.decode(previous_token_ids)
+
+        if '\n' in generated_text:
+            return [50256]
+
+        if len([e for e in generated_text if e in ['.', '!', '?']]) == max_sentences:
+            return [50256]
+
+        return range(0, 50255)

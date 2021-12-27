@@ -1,3 +1,3 @@
 class SingleMindedAgent():
-    def reply(prompt):
+    def reply(self, prompt):
         return 'Interesting...'

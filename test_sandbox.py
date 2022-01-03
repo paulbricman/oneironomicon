@@ -1,12 +1,14 @@
 from sandboxes import DiscreteSandbox
-from agents import SingleMindedAgent
+from agents import RandomAgent, SingleMindedAgent
+from util import sample_quora_question
 
 
-agent = SingleMindedAgent()
+agent = RandomAgent()
+
 dialog_history = [
     {
         'agent_turn': True,
-        'content': 'What is the meaning of life?'
+        'content': sample_quora_question()
     }
 ]
 

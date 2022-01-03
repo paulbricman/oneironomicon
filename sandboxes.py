@@ -2,13 +2,13 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, LogitsProcessorLis
 
 
 class DiscreteSandbox():
-    def __init__(self, dialog_history=[], agent=None, states=1000, model='distilgpt2', turns=2, simulation_persona='student', agent_persona='instructor'):
+    def __init__(self, dialog_history=[], agent=None, states=1000, model='distilgpt2', turns=2, simulation_persona='student', agent_persona='teacher'):
         self.dialog_history = dialog_history
         self.agent = agent
         self.states = states
         self.turns = turns
-        self.tokenizer = AutoTokenizer.from_pretrained('distilgpt2')
-        self.model = AutoModelForCausalLM.from_pretrained('distilgpt2')
+        self.tokenizer = AutoTokenizer.from_pretrained(model)
+        self.model = AutoModelForCausalLM.from_pretrained(model)
         self.simulation_persona = simulation_persona
         self.agent_persona = agent_persona
 
@@ -36,8 +36,8 @@ class DiscreteSandbox():
         inputs = self.tokenizer.encode(prompt, return_tensors='pt')
         prompt_token_length = len(inputs[0])
         
-        outputs = self.model.generate(inputs, max_length=prompt_token_length+40, no_repeat_ngram_size=3,
-            do_sample=True, prefix_allowed_tokens_fn=lambda x, y:self.force_one_paragraph(x, y, prompt_token_length), forced_eos_token_id=50256)
+        outputs = self.model.generate(inputs, max_length=prompt_token_length+40, no_repeat_ngram_size=5,
+            do_sample=False, prefix_allowed_tokens_fn=lambda x, y:self.force_one_paragraph(x, y, prompt_token_length), forced_eos_token_id=50256)
         reply = self.tokenizer.decode(outputs[0][prompt_token_length:])
         reply = reply.replace('<|endoftext|>', '').strip()
 

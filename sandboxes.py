@@ -36,7 +36,7 @@ class DiscreteSandbox():
         inputs = self.tokenizer.encode(prompt, return_tensors='pt')
         prompt_token_length = len(inputs[0])
         
-        outputs = self.model.generate(inputs, max_length=prompt_token_length+40, no_repeat_ngram_size=5,
+        outputs = self.model.generate(inputs, max_length=prompt_token_length+40, no_repeat_ngram_size=3,
             do_sample=False, prefix_allowed_tokens_fn=lambda x, y:self.force_one_paragraph(x, y, prompt_token_length), forced_eos_token_id=50256)
         reply = self.tokenizer.decode(outputs[0][prompt_token_length:])
         reply = reply.replace('<|endoftext|>', '').strip()

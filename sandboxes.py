@@ -1,16 +1,22 @@
+import re
 from transformers import AutoModelForCausalLM, AutoTokenizer, LogitsProcessorList, PrefixConstrainedLogitsProcessor
+from sentence_transformers import SentenceTransformer
+import pickle
+from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
+import os
+from sklearn.cluster import KMeans
 
 
 class DiscreteSandbox():
-    def __init__(self, dialog_history=[], agent=None, states=1000, model='distilgpt2', turns=2, simulation_persona='student', agent_persona='teacher'):
+    def __init__(self, dialog_history=[], agent=None, states=1000, model='distilgpt2', encoder_model='all-MiniLM-L6-v2', turns=2, simulation_persona='student', agent_persona='teacher'):
         self.dialog_history = dialog_history
         self.agent = agent
         self.states = states
         self.turns = turns
-        self.tokenizer = AutoTokenizer.from_pretrained(model)
-        self.model = AutoModelForCausalLM.from_pretrained(model)
         self.simulation_persona = simulation_persona
         self.agent_persona = agent_persona
+        self.encoder_model = encoder_model
 
 
     def render_prompt(self, append_new=True):
@@ -32,6 +38,10 @@ class DiscreteSandbox():
 
     
     def simulation_reply(self):
+        if isinstance(self.model, str):
+            self.model = AutoModelForCausalLM.from_pretrained(self.model)
+            self.tokenizer = AutoTokenizer.from_pretrained(self.model)
+
         prompt = self.render_prompt()
         inputs = self.tokenizer.encode(prompt, return_tensors='pt')
         prompt_token_length = len(inputs[0])
@@ -67,3 +77,32 @@ class DiscreteSandbox():
             return [50256]
 
         return range(0, 50255)
+
+
+    def discretize(self, dialog_histories_path, n_centroids=100):
+        if isinstance(self.encoder_model, str):
+            self.encoder_model = SentenceTransformer(self.encoder_model)
+
+        if not os.path.exists('data/replies_embeddings.pickle'):
+            dialog_histories = pickle.load(open(dialog_histories_path, 'rb'))
+
+            all_simulation_replies = []
+            for dialog_history in dialog_histories:
+                simulation_replies = [e['content'] for e in dialog_history if e['agent_turn'] == False]
+                all_simulation_replies += simulation_replies
+
+            all_embeddings = self.encoder_model.encode(all_simulation_replies)
+            replies_embeddings_dict = dict(zip(all_simulation_replies, all_embeddings))
+            pickle.dump(replies_embeddings_dict, open('data/replies_embeddings.pickle', 'wb'))
+        
+        replies_embeddings_dict = pickle.load(open('data/replies_embeddings.pickle', 'rb'))
+        kmeans = KMeans(n_centroids).fit(list(replies_embeddings_dict.values()))
+        pickle.dump(kmeans.cluster_centers_, open('data/replies_centroids.pickle', 'wb'))
+        
+        labels = kmeans.labels_
+        for label in range(n_centroids):
+            for reply_idx, reply in enumerate(list(replies_embeddings_dict.keys())):
+                if label == labels[reply_idx]:
+                    print(label, reply)
+
+            input()

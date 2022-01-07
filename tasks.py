@@ -1,11 +1,11 @@
-from sentence_transformers import CrossEncoder, SentenceTransformer, util
+from sentence_transformers import CrossEncoder, util
 import pickle
 import os
 
 
 class QuestionAnsweringAssistance():
-    def __init__(self, encoder_model='all-MiniLM-L6-v2', qa_model='cross-encoder/qnli-distilroberta-base'):
-        self.encoder_model = SentenceTransformer(encoder_model)
+    def __init__(self, encoder_model, qa_model='cross-encoder/qnli-distilroberta-base'):
+        self.encoder_model = encoder_model
         self.qa_model = CrossEncoder(qa_model)
 
 
@@ -34,7 +34,7 @@ class QuestionAnsweringAssistance():
         
         if len(past_embs) == 0:
             return current_qaness
-            
+
         highest_similarity = util.semantic_search(current_emb, past_embs)[0][0]['score']
 
         if highest_similarity < sim_threshold:

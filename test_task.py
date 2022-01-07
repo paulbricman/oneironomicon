@@ -28,4 +28,6 @@ dialog_history = [
 ]
 
 task = QuestionAnsweringAssistance()
-print(task.compute_reward(dialog_history))
+
+for turn in range(3):
+    print(task.compute_reward(dialog_history[:(turn + 1) * 2]))

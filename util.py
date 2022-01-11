@@ -9,6 +9,11 @@ def sample_quora_question(pool=10000):
     return data['question1'][random.randint(0, pool - 1)]
 
 
+def sample_filtered_quora_question():
+    questions = open('data/filtered_quora.txt').readlines()
+    return random.choice(questions)
+
+
 def softmax(x, temperature):
     e_x = np.exp(x / temperature)
     return e_x / e_x.sum()

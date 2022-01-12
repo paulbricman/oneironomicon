@@ -6,10 +6,11 @@ from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 import os
 from sklearn.cluster import KMeans
+import torch
 
 
 class DiscreteSandbox():
-    def __init__(self, dialog_history=[], agent=None, states=1000, model='distilgpt2', encoder_model='all-MiniLM-L6-v2', turns=2, simulation_persona='student', agent_persona='teacher'):
+    def __init__(self, dialog_history=[], agent=None, states=1000, model='distilgpt2', encoder_model='all-MiniLM-L6-v2', turns=2, simulation_persona='A', agent_persona='Q'):
         self.dialog_history = dialog_history
         self.agent = agent
         self.states = states
@@ -39,12 +40,13 @@ class DiscreteSandbox():
         return prompt
 
     def simulation_reply(self):
+        device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
         if isinstance(self.model, str):
             self.tokenizer = AutoTokenizer.from_pretrained(self.model)
-            self.model = AutoModelForCausalLM.from_pretrained(self.model)
+            self.model = AutoModelForCausalLM.from_pretrained(self.model).to(device)
 
         prompt = self.render_prompt()
-        inputs = self.tokenizer.encode(prompt, return_tensors='pt')
+        inputs = self.tokenizer.encode(prompt, return_tensors='pt').to(device)
         prompt_token_length = len(inputs[0])
 
         outputs = self.model.generate(inputs, max_length=prompt_token_length+40, no_repeat_ngram_size=3,

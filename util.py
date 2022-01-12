@@ -11,7 +11,7 @@ def sample_quora_question(pool=10000):
 
 def sample_filtered_quora_question():
     questions = open('data/filtered_quora.txt').readlines()
-    return random.choice(questions)
+    return random.choice(questions).strip()
 
 
 def softmax(x, temperature):

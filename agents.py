@@ -5,6 +5,8 @@ from sentence_transformers import util
 import torch
 import numpy as np
 from util import sample_quora_question, softmax
+from tqdm import tqdm
+import os
 
 
 class SingleMindedAgent():
@@ -25,8 +27,7 @@ class QLearningAgent():
         self.encoder_model = encoder_model
 
         self.replies = json.load(open('data/prompts.json')).values()
-        self.replies = [e for sublist in self.replies for e in sublist][:3] + \
-            ['Great, now please try to answer our original question again.']
+        self.replies = [e for sublist in self.replies for e in sublist] + [None]
 
         self.n_actions = len(self.replies)
         self.n_states = n_states
@@ -36,6 +37,8 @@ class QLearningAgent():
         centroids = pickle.load(open('data/replies_centroids.pickle', 'rb'))
         centroids = torch.Tensor(centroids).float()
 
+        if not os.path.exists('data/embs.pickle'):
+            pickle.dump({}, open('data/embs.pickle', 'wb'))
         db_embs = pickle.load(open('data/embs.pickle', 'rb'))
         current_emb = db_embs.get(reply, self.encoder_model.encode(
             reply, convert_to_tensor=True))
@@ -46,21 +49,29 @@ class QLearningAgent():
             0][0]['corpus_id']
         return cluster_index
 
-    def train(self, sandbox, task, epochs=5, turns=5, gamma=0.5, alpha=0.5):
-        print(self.q_table)
+    def train(self, sandbox, task, episodes=20000, turns=10, gamma=0.5, alpha=0.5):
+        dialog_histories = []
+        reward_history = []
 
-        for epoch in range(epochs):
-            print('[*] Epoch', epoch)
+        for episode in tqdm(range(episodes)):
+            pickle.dump({}, open('data/embs.pickle', 'wb'))
+            pickle.dump({}, open('data/qaness.pickle', 'wb'))
+
+            print('[*] Episode', episode)
+            target_question = sample_quora_question()
             dialog_history = [
                 {
                     'agent_turn': True,
-                    'content': sample_quora_question()
+                    'content': target_question
                 }
             ]
+
+            self.replies[-1] = 'Great, now please try to answer our original question again. ' + target_question
 
             sandbox.dialog_history = dialog_history
             sandbox.simulation_reply()
             next_state_index = None
+            episode_rewards = []
 
             for turn in range(turns):
                 if not next_state_index:
@@ -70,22 +81,29 @@ class QLearningAgent():
                     initial_state_index = next_state_index
 
                 probability_distribution = softmax(
-                    self.q_table[initial_state_index], 1 - (epoch / epochs))
+                    self.q_table[initial_state_index], 1 - (episode / episodes))
 
-                greedy_action_index = np.random.choice(
+                softmax_action_index = np.random.choice(
                     range(self.n_actions), p=probability_distribution)
-                greedy_action_reply = self.replies[greedy_action_index]
-                sandbox.agent_reply(greedy_action_reply)
+                softmax_action_reply = self.replies[softmax_action_index]
+                sandbox.agent_reply(softmax_action_reply)
 
                 sandbox.simulation_reply()
                 reward = task.compute_reward(sandbox.dialog_history)
+                episode_rewards += [reward]
                 next_state_index = self.quantize(
                     sandbox.dialog_history[-1]['content'])
                 max_q_value = np.max(self.q_table[next_state_index])
 
-                self.q_table[initial_state_index][greedy_action_index] += \
+                self.q_table[initial_state_index][softmax_action_index] += \
                     alpha * (reward + gamma * max_q_value -
-                             self.q_table[initial_state_index][greedy_action_index])
+                             self.q_table[initial_state_index][softmax_action_index])
+
+            dialog_histories += [sandbox.dialog_history]
 
             print(sandbox.render_prompt(append_new=False))
-            print(self.q_table)
+            print(np.mean(episode_rewards))
+            reward_history += [np.mean(episode_rewards)]
+        
+            pickle.dump([reward_history, dialog_histories, self.q_table], open('data/training_outputs.pickle', 'wb'))
+            

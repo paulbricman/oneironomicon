@@ -1,12 +1,14 @@
 from sentence_transformers import CrossEncoder, util
 import pickle
 import os
+import torch
 
 
 class QuestionAnsweringAssistance():
     def __init__(self, encoder_model, qa_model='cross-encoder/qnli-distilroberta-base'):
+        device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
         self.encoder_model = encoder_model
-        self.qa_model = CrossEncoder(qa_model)
+        self.qa_model = CrossEncoder(qa_model, device=device)
 
     def compute_reward(self, dialog_history, qa_threshold=0.7, sim_threshold=0.5):
         question = dialog_history[0]['content']

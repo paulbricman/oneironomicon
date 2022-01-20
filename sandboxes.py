@@ -23,6 +23,7 @@ class DiscreteSandbox():
     def render_prompt(self, append_new=True):
         prompt = ''
 
+        # print(self.dialog_history)
         for contribution in self.dialog_history:
             if contribution['agent_turn']:
                 prompt += self.agent_persona + ': ' + \
@@ -43,7 +44,8 @@ class DiscreteSandbox():
         device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
         if isinstance(self.model, str):
             self.tokenizer = AutoTokenizer.from_pretrained(self.model)
-            self.model = AutoModelForCausalLM.from_pretrained(self.model).to(device)
+            self.model = AutoModelForCausalLM.from_pretrained(
+                self.model).to(device)
 
         prompt = self.render_prompt()
         inputs = self.tokenizer.encode(prompt, return_tensors='pt').to(device)

@@ -27,7 +27,8 @@ class QLearningAgent():
         self.encoder_model = encoder_model
 
         self.replies = json.load(open('data/prompts.json')).values()
-        self.replies = [e for sublist in self.replies for e in sublist] + [None]
+        self.replies = [
+            e for sublist in self.replies for e in sublist] + [None]
 
         self.n_actions = len(self.replies)
         self.n_states = n_states
@@ -104,6 +105,12 @@ class QLearningAgent():
             print(sandbox.render_prompt(append_new=False))
             print(np.mean(episode_rewards))
             reward_history += [np.mean(episode_rewards)]
-        
-            pickle.dump([reward_history, dialog_histories, self.q_table], open('data/training_outputs.pickle', 'wb'))
-            
+
+            pickle.dump([reward_history, dialog_histories, self.q_table], open(
+                'data/training_outputs.pickle', 'wb'))
+
+    def reply(self, dialog_history):
+        user_reply = dialog_history[-1]['content']
+        state = self.quantize(user_reply)
+        greedy_index = np.argmax(self.q_table[state])
+        print(greedy_index)

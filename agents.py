@@ -112,5 +112,6 @@ class QLearningAgent():
     def reply(self, dialog_history):
         user_reply = dialog_history[-1]['content']
         state = self.quantize(user_reply)
+        self.replies[-1] = 'Great, now please try to answer our original question again. ' + dialog_history[0]['content']
         greedy_index = np.argmax(self.q_table[state])
-        print(greedy_index)
+        return self.replies[greedy_index]

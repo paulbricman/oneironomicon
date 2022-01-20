@@ -63,10 +63,19 @@ class DiscreteSandbox():
             reply = self.agent.reply(self.dialog_history)
         self.dialog_history += [{'agent_turn': True, 'content': reply}]
 
-    def converse(self):
+    def converse(self, user=False, task=None):
+        rewards = []
         for _ in range(self.turns):
-            self.simulation_reply()
+            if not user:
+                self.simulation_reply()
+            else:
+                print('---')
+                print(self.render_prompt())
+                self.dialog_history += [{'agent_turn': False, 'content': input()}]
+                if task is not None:
+                    rewards += [task.compute_reward(self.dialog_history)]
             self.agent_reply()
+        return rewards
 
     def force_one_paragraph(self, batch_id, previous_token_ids, prompt_token_length):
         max_sentences = 1

@@ -10,7 +10,7 @@ import torch
 
 
 class DiscreteSandbox():
-    def __init__(self, dialog_history=[], agent=None, states=1000, model='distilgpt2', encoder_model='all-MiniLM-L6-v2', turns=2, simulation_persona='A', agent_persona='Q'):
+    def __init__(self, dialog_history=[], agent=None, states=1000, model='distilgpt2', encoder_model='all-MiniLM-L6-v2', turns=5, simulation_persona='A', agent_persona='Q'):
         self.dialog_history = dialog_history
         self.agent = agent
         self.states = states
